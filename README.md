@@ -11,17 +11,20 @@ data structures we decided to use are vectors, linked lists and Bplus trees. We
 might use more data structures (within what is allowed) if we come up with
 any extra features to implement. The following is a list of functions that our
 prototype would have :
+
 Basic Statements:
   create
   select
   insert
   delete
   update
+  
 Data types that can be stored :
   Integer
   Double
   String
   Char
+  
 Features:
   Detects duplicate table names (primary indexing)
   Login feature for users (not yet implemented)
