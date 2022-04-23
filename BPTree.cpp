@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <string>
 #include <cmath>
 
 using namespace std;
@@ -10,7 +11,7 @@ class Node
 {
 private:
     int index;
-    string fileName;
+    string name;
     Node *next;
     friend class LinkedList;
 };
@@ -20,13 +21,13 @@ class LinkedList
 
 public:
     LinkedList();
-    void insert(int x);
+    void insert(int x, bool t);
     int size();
-    int check(int x);
+    int check(int x); // function returns a number which determines which child we need to go to
     void splitList(LinkedList &list);
     int front();
     void deleteNode(int x);
-    int searchList(int x);
+    string searchList(int x);
     void disList();
 
 private:
@@ -42,7 +43,7 @@ public:
 private:
     bool isLeaf;
     vector<TreeNode *> child;
-    TreeNode *next;
+    TreeNode *next; // used only when the node is a leafNode
     LinkedList keys;
     friend class BPlusTree;
 };
@@ -53,13 +54,11 @@ public:
     BPlusTree();
     void insertIndex(int index, TreeNode *temp, TreeNode *parent);
     void splitTree(TreeNode *temp, TreeNode *parent);
-    void deleteIndex(int index, TreeNode *temp, TreeNode *parent);
-    TreeNode *searchIndex(int index);
-    void dis(TreeNode *);
+    void searchIndex(int index);
+    void dis(TreeNode *temp);
     TreeNode *getRoot();
 
 private:
-    int height;
     TreeNode *root;
 };
 
@@ -70,10 +69,19 @@ TreeNode::TreeNode()
 
 LinkedList::LinkedList() : head(NULL), n(0) {}
 
-void LinkedList::insert(int x) // function adds the number x such that the linked list remains sorted
+void LinkedList::insert(int x, bool t) // function adds the number x such that the linked list remains sorted
 {
     Node *temp = new Node;
     temp->index = x;
+
+    if (t == true)
+    {
+        string name = "a";
+        cout << "Enter name:";
+        cin >> name;
+        temp->name = name;
+    }
+
     ++n;
 
     if (head == NULL || head->index > x)
@@ -148,20 +156,18 @@ void LinkedList::deleteNode(int x)
     --n;
 }
 
-int LinkedList::searchList(int x)
+string LinkedList::searchList(int x)
 {
     Node *ptr = head;
-    int i = 0;
 
     while (ptr != NULL)
     {
         if (x == ptr->index)
-            return i;
+            return ptr->name;
         ptr = ptr->next;
-        ++i;
     }
 
-    return -1;
+    return "NOT FOUND";
 }
 
 void LinkedList::disList()
@@ -175,7 +181,7 @@ void LinkedList::disList()
     }
 }
 
-BPlusTree::BPlusTree() : root(NULL), height(0) {}
+BPlusTree::BPlusTree() : root(NULL) {}
 
 void BPlusTree::insertIndex(int index, TreeNode *temp, TreeNode *parent)
 {
@@ -183,18 +189,18 @@ void BPlusTree::insertIndex(int index, TreeNode *temp, TreeNode *parent)
     {
         root = new TreeNode;
         root->isLeaf = true;
-        root->keys.insert(index);
+        root->keys.insert(index, true);
         root->next = NULL;
     }
     else
     {
-        if (temp->isLeaf == false)
+        if (temp->isLeaf == false) // recursively traverse the tree till leaf node
         {
             int i = temp->keys.check(index);
-            insertIndex(index, temp->child[i], temp); // recursively traverse the tree till leaf node
+            insertIndex(index, temp->child[i], temp);
         }
         else
-            temp->keys.insert(index);
+            temp->keys.insert(index, true);
 
         if (temp->keys.size() >= order)
         {
@@ -213,12 +219,10 @@ void BPlusTree::insertIndex(int index, TreeNode *temp, TreeNode *parent)
 
 void BPlusTree::splitTree(TreeNode *temp, TreeNode *parent)
 {
-    ++height;
-
     TreeNode *newLeaf = new TreeNode; // create new tree node and insert the firts element of it into parent
     newLeaf->keys.splitList(temp->keys);
     newLeaf->isLeaf = temp->isLeaf;
-    parent->keys.insert(newLeaf->keys.front());
+    parent->keys.insert(newLeaf->keys.front(), false);
 
     if (temp->isLeaf == true) // to link the leaf nodes
     {
@@ -239,53 +243,13 @@ void BPlusTree::splitTree(TreeNode *temp, TreeNode *parent)
 
     int i;
     // adds the temp node and the newly created node as child nodes to parent in appropriate locations
-    if(temp == root)
+    if (temp == root)
     {
         i = parent->keys.check(temp->keys.front());
         parent->child.insert(parent->child.begin() + i, temp);
     }
     i = parent->keys.check(newLeaf->keys.front());
     parent->child.insert(parent->child.begin() + i, newLeaf);
-    /*
-    cout << "The vector elements are : ";
-    for (int i = 0; i < parent->child.size(); i++)
-    {
-        parent->child[i]->keys.disList();
-        cout << " ";
-    }
-    cout<<"\n";*/
-}
-
-void BPlusTree::deleteIndex(int index, TreeNode *temp, TreeNode *parent)
-{
-    int minKeys = ceil(order) - 1; // minimum number of keys that can be stored in the keyset of a tree node
-
-    while (temp->isLeaf == false)
-    {
-        int i = temp->keys.check(index);
-        temp = temp->child[i];
-    }
-
-    int i = temp->keys.searchList(index);
-    temp->keys.deleteNode(i);
-
-    if (temp->keys.size() < minKeys)
-    {
-        int j = parent->keys.check(index);                        // search for index of the child node in the vector to search for other child nodes to borrow from
-        if (j > 0 && parent->child[j - 1]->keys.size() > minKeys) // check left sibling and borrow from it
-        {
-            TreeNode *leftSibling = parent->child[j - 1];
-        }
-        else if (j < order && parent->child[j + 1]->keys.size() > minKeys) // check right sibling and borrow from it
-        {
-            TreeNode *rightSibling = parent->child[j + 1];
-            temp->keys.insert(rightSibling->keys.front());
-            rightSibling->keys.deleteNode(0);
-
-            parent->keys.deleteNode(j);
-            parent->keys.insert(rightSibling->keys.front());
-        }
-    }
 }
 
 void BPlusTree::dis(TreeNode *temp)
@@ -304,6 +268,18 @@ void BPlusTree::dis(TreeNode *temp)
     }
 }
 
+void BPlusTree::searchIndex(int index)
+{
+    TreeNode *temp = root;
+    while (temp->isLeaf == false) // recursively traverse the tree till leaf node
+    {
+        int i = temp->keys.check(index);
+        temp = temp->child[i];
+    }
+
+    cout << "Name: " << temp->keys.searchList(index);
+}
+
 TreeNode *BPlusTree::getRoot()
 {
     return root;
@@ -312,43 +288,40 @@ TreeNode *BPlusTree::getRoot()
 int main()
 {
     BPlusTree b;
-    
-    cout << "inserted 1\n";
-    b.insertIndex(1, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 3\n";
-    b.insertIndex(3, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 5\n";
-    b.insertIndex(5, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 7\n";
-    b.insertIndex(7, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 9\n";
-    b.insertIndex(9, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 2\n";
-    b.insertIndex(2, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 4\n";
-    b.insertIndex(4, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 6\n";
-    b.insertIndex(6, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 8\n";
-    b.insertIndex(8, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 10\n";
-    b.insertIndex(10, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    /*
-    cout << "inserted 28\n";
-    b.insertIndex(28, b.getRoot(), NULL);
-    b.dis(b.getRoot());
-    cout << "inserted 42\n";
-    b.insertIndex(42, b.getRoot(), NULL);
-    b.dis(b.getRoot());*/
-    
+
+    cout << "Welcome to ID-Name Management System";
+    cout << "\n1.INSERT";
+    cout << "\n2.SELECT";
+    cout << "\n3.EXIT";
+    char choice = '1';
+    while (choice != 3)
+    {
+        cout << "\nEnter your choice:";
+        cin >> choice;
+
+        switch (choice)
+        {
+        case '1':
+            cout << "Enter ID:";
+            {
+                int id;
+                cin >> id;
+                b.insertIndex(id, b.getRoot(), NULL);
+            }
+            break;
+        case '2':
+            cout << "Enter id:";
+            {
+                int id;
+                cin >> id;
+                b.searchIndex(id);
+            }
+            break;
+        case '3':
+            cout << "Exiting";
+            break;
+        default:
+            cout << "Enter a valid choice:";
+        }
+    }
 }
